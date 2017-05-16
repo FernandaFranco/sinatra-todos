@@ -6,6 +6,7 @@ require "tilt/erubis"
 configure do
   enable :sessions
   set :session_secret, 'secret'
+  set :erb, :escape_html => true
 end
 
 helpers do
@@ -93,19 +94,26 @@ post "/lists" do
   end
 end
 
+# Method to make sure a list ID exists
+def load_list(index)
+  list = session[:lists][index] if index
+  return list if list
+
+  session[:error] = "The specified list was not found."
+  redirect "/lists"
+end
+
 # View a single todo list
 get "/lists/:id" do
   @list_id = params[:id].to_i
-  @list = session[:lists][@list_id]
-
+  @list = load_list(@list_id)
   erb :list, layout: :layout
 end
 
 # Edit an existing todo list
 get "/lists/:id/edit" do
   id = params[:id].to_i
-  @list = session[:lists][id]
-
+  @list = load_list(id)
   erb :edit_list, layout: :layout
 end
 
@@ -113,7 +121,7 @@ end
 post "/lists/:id" do
   list_name = params[:list_name].strip
   id = params[:id].to_i
-  @list = session[:lists][id]
+  @list = load_list(id)
 
   error = error_for_list_name(list_name)
   if error
@@ -129,10 +137,9 @@ end
 # Delete an existing todo list
 post "/lists/:id/delete" do
   id = params[:id].to_i
-  list_name = session[:lists][id][:name]
 
   session[:lists].delete_at(id)
-  session[:success] = "The list '#{list_name}' has been deleted."
+  session[:success] = "The list has been deleted."
 
   redirect "/lists"
 end
@@ -140,7 +147,7 @@ end
 # Create a new todo item in a list
 post "/lists/:list_id/todos" do
   @list_id = params[:list_id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
   text = params[:todo].strip
 
   error = error_for_todo(text)
@@ -157,7 +164,7 @@ end
 # Deleting a todo item
 post "/lists/:list_id/todos/:todo_id/delete" do
   list_id = params[:list_id].to_i
-  list = session[:lists][list_id]
+  list = load_list(list_id)
   todo_id = params[:todo_id].to_i
 
   list[:todos].delete_at(todo_id)
@@ -168,7 +175,7 @@ end
 # Checking an item as completed
 post "/lists/:list_id/todos/:todo_id" do
   list_id = params[:list_id].to_i
-  list = session[:lists][list_id]
+  list = load_list(list_id)
   todo_id = params[:todo_id].to_i
 
   is_completed = params[:completed] == "true"
@@ -181,11 +188,16 @@ end
 # Mark all items completed
 post "/lists/:list_id/complete_all" do
   @list_id = params[:list_id].to_i
-  @list = session[:lists][@list_id]
+  @list = load_list(@list_id)
   @list[:todos].each do |todo|
     todo[:completed] = true
   end
 
   session[:success] = "All todos have been completed."
   redirect "/lists/#{@list_id}"
+end
+
+not_found do
+  session[:error] = "Page not found"
+  redirect "/lists"
 end
