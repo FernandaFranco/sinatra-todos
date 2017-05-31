@@ -35,13 +35,11 @@ helpers do
     complete_lists.each {|list| yield list, lists.index(list)}
   end
 
-
   def sort_todos(todos, &block)
-    complete_todos, incomplete_todos = todos.partition{ |todo| todo[:completed]}
+    complete_todos, incomplete_todos = todos.partition{ |todo| todo[:completed] }
 
     incomplete_todos.each(&block)
     complete_todos.each(&block)
-
   end
 
   def next_todo_id(todos)
@@ -174,7 +172,7 @@ end
 # Deleting a todo item
 post "/lists/:list_id/todos/:todo_id/delete" do
   @list_id = params[:list_id].to_i
-  @list = load_list(list_id)
+  @list = load_list(@list_id)
 
   todo_id = params[:todo_id].to_i
   @list[:todos].reject! { |todo| todo[:id] == todo_id}
